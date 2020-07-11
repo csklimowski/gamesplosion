@@ -1,124 +1,6 @@
 
 
-const JumpType = {
-    JUMP: 0,
-    FLAP: 1,
-    HOVER: 2,
-    FLIP: 3,
-    POGO: 4
-}
-
-const Weapon = {
-    NONE: 0,
-    STOMP: 1,
-    SHOOT: 2,
-    WHACK: 3,
-    SAW: 4
-}
-
-const SpecialAction = {
-    NONE: 0,
-    SWAP: 1
-}
-
-const Gun = {
-    FORWARD: 0,
-    POINTER: 1,
-    DOWN: 3,
-}
-
-
-const LevelType = {
-    NORMAL: 0,
-    TOWER_ASCEND: 1,
-    AUTO: 2,
-    LAVA: 3,
-    SURVIVE: 4,
-    COLLECT: 5,
-    KEY: 6,
-}
-
-const LevelShape = {
-    NORMAL: 0,
-    TOWER: 1,
-    SPACIOUS: 3,
-    ARENA: 4,
-    EXPLORE: 5,
-}
-
-const EnemyMovement = {
-    STATIONARY: 0,
-    WALKING: 1,
-    FLOATING: 2,
-    RICOCHET: 3,
-    FLIPPING: 4
-}
-
-const EnemyAttack = {
-    NONE: 0,
-    SHOOT: 1,
-    SAW: 2
-}
-
-
-/*
-
-
-
-Jump
-Reverse Gravity (produces things on ceiling)
-Helicopter
-
-with...
-
-Controlled movement
-Auto-run (makes level longer/more sparse, puts exit on end)
-
-OR
-
-Throw teleporter/golf
-
-
-
-Melee weapon
-Sawblade
-Rushdown/tackle
-Down gun (knocks you up, replaces jump)
-Forward gun
-Stomp enemies
-
-Guns have randomized...
-- Fire rate
-- Drop off
-- Projectile speed
-- Spread
-- Number of projectiles
-
-LEVEL VARIANTS/GOALS
-
-- Climb the tower
-- Key and back again
-- Rising lava (produces stairs as you go right)
-- Parallel universes 
-- Auto run (not compatible with golf))
-- Kill the monsters
-- Can climb walls
-
-*/
-
-
-
-class Bullet extends Phaser.GameObjects.Image {
-    
-}
-
-
-
-interface GameParams {
-    jumpType: number,
-    weapon: number
-}
-
+import { JumpType, Weapon, SpecialAction, GunProjectile, EnemyMovement, GameData, generateGame } from '../generator';
 
 
 export class MainScene extends Phaser.Scene {
@@ -135,92 +17,69 @@ export class MainScene extends Phaser.Scene {
     graphics: Phaser.GameObjects.Graphics;
 
     enemies: Phaser.GameObjects.Group;
+    playerBullets: BulletGroup;
+    enemyBullets: BulletGroup;
 
-    gameParams: GameParams;
+    map: Phaser.Tilemaps.Tilemap;
+    platformLayer: Phaser.Tilemaps.StaticTilemapLayer;
+
+    gameData: GameData;
+    background: Phaser.GameObjects.Image;
 
     create() {
 
-        this.generator = new Phaser.Math.RandomDataGenerator();
+        this.gameData = generateGame(new Phaser.Math.RandomDataGenerator());
 
-        let levelWidth = this.generator.integerInRange(20, 60);
-        let levelHeight = 15;
-        let tileData = [];
+        this.background = this.add.image(480, 360, this.gameData.artStyle+'-background');
+        // this.background.setTint(0xaaaaaa);
 
-        this.gameParams = {
-            jumpType: JumpType.JUMP,
-            weapon: Weapon.STOMP
-        }
-
-        for (let r = 0; r < levelHeight; r++) {
-            tileData.push([]);
-            for (let c = 0; c < levelWidth; c++) {
-                if (r === 0 || c === 0 || r === levelHeight-1 || c === levelWidth-1) {
-                    if (r > 0 && tileData[r-1][c] === -1) {
-                        tileData[r].push(1);
-                    } else {
-                        tileData[r].push(0);
-                    }
-                } else {
-                    tileData[r].push(-1)
-                }
-            }
-        }
-
-        let map = this.make.tilemap({
-            data: tileData,
+        
+        this.map = this.make.tilemap({
+            data: this.gameData.tileData,
             tileWidth: 48,
             tileHeight: 48
         });
 
-        let tiles = map.addTilesetImage('tiles');
-        let blocks = map.createStaticLayer(0, tiles);
-        blocks.setCollisionByExclusion([-1], true);
+        let tiles = this.map.addTilesetImage(this.gameData.artStyle + '-tiles');
+        this.platformLayer = this.map.createStaticLayer(0, tiles);
+        this.platformLayer.setCollisionByExclusion([-1], true);
+        
+        this.cameras.main.setBounds(0, 0, this.platformLayer.width, this.platformLayer.height);
 
-        // basic level dimensions
-
-        for (let r = 0; r < levelHeight; r++) {
-            tileData.push([]);
-            for (let c = 0; c < levelWidth; c++) {
-                if (r === 0 || c === 0 || r === levelHeight-1 || c === levelWidth-1) {
-                    if (r > 0 && tileData[r-1][c] === -1) {
-                        tileData[r].push(1);
-                    } else {
-                        tileData[r].push(0);
-                    }
-                } else {
-                    tileData[r].push(-1)
-                }
-            }
-        }
-
-        let playerStyle = ['player1', 'player2', 'player3'][this.generator.integerInRange(0, 2)]
-        let enemyStyle = ['enemy1', 'enemy2', 'enemy3'][this.generator.integerInRange(0, 2)]
 
         // add player
-        this.player = new Player(this, 300, 300, 'pixel_chunky', playerStyle);
-        
+        this.player = new Player(this, this.gameData);
         this.player.setCollideWorldBounds(false);
         this.player.setGravity(0, 1499);
-        this.player.setScale(1);
-        this.physics.add.collider(this.player, blocks);
+        this.physics.add.collider(this.player, this.platformLayer);
+
 
         this.enemies = this.add.group();
-        let enemy = new Enemy(this, 600, 300, 'pixel_chunky', enemyStyle);
-        enemy.setGravity(0, 1499);
-        enemy.setOrigin(0.5, 1);
-        this.physics.add.collider(enemy, blocks);
+        this.enemies.runChildUpdate = true;
+        for (let loc of this.gameData.enemyLocations) {
+            let enemy = new Enemy(this, this.platformLayer.tileToWorldX(loc.x), this.platformLayer.tileToWorldY(loc.y), this.gameData.artStyle, this.gameData.enemyVariant);
+            enemy.setGravity(0, 1499);
+            this.enemies.add(enemy);            
+        }
 
-        enemy.body.immovable = true;
 
-        this.enemies.add(enemy);
+        this.playerBullets = new BulletGroup(this, this.gameData.artStyle);
 
-        this.physics.add.collider(this.player, enemy, this.playerMeetsEnemy, null, this);
+        this.physics.add.collider(this.playerBullets, this.platformLayer, this.bulletMeetsPlatform, null, this);
+        this.physics.add.collider(this.playerBullets, this.enemies, this.bulletMeetsEnemy, null, this);
         
-
+        this.physics.add.collider(this.enemies, this.platformLayer);
+        this.physics.add.collider(this.player, this.enemies, this.playerMeetsEnemy, null, this);
 
         this.keys.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.keys.space.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
         this.keys.space.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
+        
+        this.keys.w = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.keys.w.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
+        this.keys.w.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
+
+        this.keys.s = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         
         this.keys.a = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
         this.keys.d = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -248,28 +107,55 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
+    bulletMeetsPlatform(bullet: Phaser.Physics.Arcade.Image) {
+        bullet.setActive(false);
+        bullet.setVisible(false);
+    }
+
+    bulletMeetsEnemy(enemy: Enemy, bullet: Phaser.Physics.Arcade.Image) {
+
+        bullet.setActive(false);
+        bullet.setVisible(false);
+
+        enemy.setTexture(this.gameData.artStyle+'-poof');
+        enemy.disableBody();
+
+        this.time.addEvent({
+            delay: 500,
+            callback: enemy.destroy,
+            callbackScope: enemy
+        })
+        
+    }
+
     onSpaceDown() {
         if (this.player.alive) {
-            if (this.gameParams.jumpType === JumpType.JUMP) {
+            if (this.gameData.jumpType === JumpType.JUMP) {
                 if (this.player.body.velocity.y === 0) {
                     this.player.setVelocityY(-0.6*this.player.body.gravity.y);
                     this.player.showJump();
                 }
             }
 
-            if (this.gameParams.jumpType === JumpType.FLIP) {
+            if (this.gameData.jumpType === JumpType.FLIP) {
                 if (this.player.body.velocity.y === 0) {
                     this.player.setGravityY(-this.player.body.gravity.y)
                     this.player.setFlipY(!this.player.flipY);
                     this.player.showJump();
                 }
             }
+
+            if (this.gameData.jumpType === JumpType.FLAP) {
+                this.player.setVelocityY(-0.3*this.player.body.gravity.y);
+                this.player.hoverDevice.play(this.gameData.artStyle+'-flap');
+                this.player.showJump();
+            }
         }
     }
 
     onSpaceUp() {
         if (this.player.alive) {
-            if (this.gameParams.jumpType === JumpType.JUMP) {
+            if (this.gameData.jumpType === JumpType.JUMP) {
                 if (this.player.body.velocity.y < 0) {
                     this.player.body.velocity.y*= 0.7;
                 }
@@ -278,11 +164,24 @@ export class MainScene extends Phaser.Scene {
     }
 
     onClick() {
+        if (this.gameData.playerWeapon === Weapon.GUN_FORWARD) {
+            this.playerBullets.fire(this.player.weapon.x, this.player.weapon.y, this.player.flipX ? -1000 : 1000, 0);
+        }
 
+        if (this.gameData.playerWeapon === Weapon.GUN_POINTER) {
+
+        }
+
+        if (this.gameData.playerWeapon === Weapon.GUN_DOWN) {
+
+        }
+
+        if (this.gameData.playerWeapon === Weapon.WHACK) {
+            
+        }
     }
 
     update(time: number, delta: number) {
-
         this.graphics.clear();
         this.player.body.drawDebug(this.graphics);
 
@@ -290,7 +189,6 @@ export class MainScene extends Phaser.Scene {
             // @ts-ignore
             enemy.body.drawDebug(this.graphics);
         }
-
 
         if (this.player.alive) {
             if (this.keys.d.isDown && !this.keys.a.isDown) {
@@ -302,6 +200,7 @@ export class MainScene extends Phaser.Scene {
             } else if (this.keys.a.isDown && !this.keys.d.isDown) {
                 this.player.setVelocityX(-400);
                 this.player.setFlipX(true);
+                
                 if (this.player.body.velocity.y === 0) {
                     this.player.showRun();
                 }
@@ -311,40 +210,85 @@ export class MainScene extends Phaser.Scene {
                     this.player.showIdle();
                 }
             }
+
+            if (this.gameData.jumpType === JumpType.HOVER) {
+                if (this.keys.w.isDown && !this.keys.s.isDown) {
+                    if (this.player.body.velocity.y === 0) {
+                        this.player.showJump();
+                    }
+                    this.player.setVelocityY(-400);
+                    this.player.hoverDevice.setFrame(1);
+                } else {
+                    this.player.hoverDevice.setFrame(0);
+                }
+            }
         }
+
+
+        this.player.update();
+        
+        this.cameras.main.centerOn(this.player.x, this.player.y);
+        
+        this.background.setX(Phaser.Math.Clamp(this.player.x, 480, this.platformLayer.width-480));
+        this.background.setY(this.cameras.main.worldView.centerY);
     }
 }
 
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
 
-    artStyle: string;
-    variant: string;
+    gameData: GameData;
     alive: boolean = true;
+    weapon?: Phaser.GameObjects.Image;
+    hoverDevice?: Phaser.GameObjects.Sprite;
 
-    constructor(scene: Phaser.Scene, x, y, artStyle: string, variant: string) {
-        super(scene, x, y, artStyle+'-'+variant+'-idle');
-        scene.add.existing(this);
+    constructor(scene: Phaser.Scene, gameData: GameData) {
+        super(scene, gameData.playerLocation.x, gameData.playerLocation.y, gameData.artStyle+'-'+gameData.playerVariant+'-idle', gameData.playerVariant);
+        
         scene.physics.add.existing(this);
-        this.artStyle = artStyle;
-        this.variant = variant;
+        this.gameData = gameData;
+
+        if (gameData.jumpType === JumpType.HOVER || gameData.jumpType === JumpType.FLAP) {
+            this.hoverDevice = scene.add.sprite(gameData.playerLocation.x, gameData.playerLocation.y, gameData.artStyle+'-hover device');
+        }
+        
+
+        scene.add.existing(this);
+        if (gameData.playerWeapon) {
+            this.weapon = scene.add.image(gameData.playerLocation.x, gameData.playerLocation.y, gameData.artStyle+'-gun');
+        }
+        
+    }
+
+    update() {
+        if (this.weapon) {
+            this.weapon.setX(this.flipX ? this.body.position.x : this.body.position.x + 72);
+            this.weapon.setY(this.body.position.y+48);
+            this.weapon.setFlip(this.flipX, this.flipY);
+        }
+
+        if (this.hoverDevice) {
+            this.hoverDevice.setX(this.body.position.x+36);
+            this.hoverDevice.setY(this.body.position.y+48);
+            this.hoverDevice.setFlip(this.flipX, this.flipY);
+        }
     }
 
     showRun() {
-        this.play(this.artStyle+'-'+this.variant+'-run', true);
+        this.play(this.gameData.artStyle+'-'+this.gameData.playerVariant+'-run', true);
     }
 
     showJump() {
         this.anims.stop();
-        this.setTexture(this.artStyle+'-'+this.variant+'-jump');
+        this.setTexture(this.gameData.artStyle+'-'+this.gameData.playerVariant+'-jump');
     }
 
     showIdle() {
-        this.setTexture(this.artStyle+'-'+this.variant+'-idle');
+        this.setTexture(this.gameData.artStyle+'-'+this.gameData.playerVariant+'-idle');
     }
 
     showDie() {
-        this.setTexture(this.artStyle+'-'+this.variant+'-die');
+        this.setTexture(this.gameData.artStyle+'-'+this.gameData.playerVariant+'-die');
     }
 }
 
@@ -356,7 +300,39 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
         super(scene, x, y, artStyle+'-'+variant);
         scene.add.existing(this);
         scene.physics.add.existing(this);
+        this.setOrigin(0.5, 1);
+        this.body.immovable = true;
         this.artStyle = artStyle;
         this.variant = variant;
+    }
+
+    update(time: number, delta: number) {
+        
+    }
+}
+
+
+class BulletGroup extends Phaser.Physics.Arcade.Group {
+    constructor(scene: MainScene, artStyle) {
+        super(scene.physics.world, scene);
+
+        this.createMultiple({
+            active: false,
+            visible: false,
+            key: artStyle+'-bullet',
+            quantity: 30
+        });
+    }
+
+    fire(x, y, vx, vy) {
+        let bullet: Phaser.Physics.Arcade.Image = this.getFirstDead(false);
+        bullet.body.reset(x, y);
+
+        bullet.setRotation(Phaser.Math.Angle.Between(0, 0, vx, vy));
+        
+        bullet.setActive(true);
+        bullet.setVisible(true);
+        bullet.setVelocityX(vx);
+        bullet.setVelocityY(vy);
     }
 }
