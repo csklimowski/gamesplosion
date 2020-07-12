@@ -4,66 +4,49 @@
 export const JumpType = {
     JUMP: 0,
     FLAP: 1,
-    HOVER: 2,
-    FLIP: 3,
-    POGO: 4,
-    CLIMB: 5
+    FLIP: 2,
+    GUN: 3
 }
 
 export const Weapon = {
     NONE: 0,
     STOMP: 1,
-    GUN_FORWARD: 2,
-    GUN_DOWN: 3,
+    WHACK: 2,
+    GUN_FORWARD: 3,
     GUN_POINTER: 4,
-    WHACK: 5,
-    ORBIT: 6
+    GUN_POINTER_RICOCHET: 5
 }
 
-export const SpecialAction = {
-    NONE: 0,
-    SWAP: 1
-}
-
-export const GunProjectile = {
-    NONE: 0,
-    RICOCHET: 1,
-    ARC: 2,
-    RAPID: 3,
-    SLOW: 4
-}
-
-export const LevelType = {
-    NORMAL: 0,
-    TOWER_ASCEND: 1,
-    AUTO: 2,
-    LAVA: 3,
-    SURVIVE: 4,
-    COLLECT: 5,
-    KEY: 6,
+export const LevelGoal = {
+    FINISH_LINE: 0,
+    COLLECT: 1,
+    DOOR_KEY: 2,
+    SURVIVE: 3,
+    KILL: 4
 }
 
 export const LevelShape = {
-    NORMAL: 0,
-    TOWER: 1,
-    SPACIOUS: 3,
-    ARENA: 4,
-    EXPLORE: 5,
-    AERIAL: 6,
+    LEFT_TO_RIGHT: 0,
+    CLIMB_TOWER: 1,
+    CLIMB_MOUNTAIN: 2,
+    DESCEND_MOUNTAIN: 4,
+    CRAMPED: 5,
 }
+// hovering gives extra pits, flipping adds close ceiling
 
 export const EnemyMovement = {
     STATIONARY: 0,
     WALKING: 1,
     FLOATING: 2,
     RICOCHET: 3,
-    FLIPPING: 4
+    JUMPING: 4
 }
 
 export const EnemyAttack = {
     NONE: 0,
     SHOOT: 1,
-    SAW: 2
+    SHOOT_PLAYER: 2,
+    SAW: 3
 }
 
 export interface Vector2 {
@@ -73,7 +56,12 @@ export interface Vector2 {
 
 
 export interface GameData {
+
+    generator: Phaser.Math.RandomDataGenerator;
+    seed: string;
+
     artStyle?: string;
+    levelCount?: number;
     
     playerVariant?: string;
     playerLocation?: Vector2;
@@ -88,16 +76,39 @@ export interface GameData {
     enemyWeapon?: number;
     
     tileData?: number[][];
+
+    doorLocation?: Vector2;
+    description?: string;
 }
 
-export function generateGame(generator: Phaser.Math.RandomDataGenerator) {
 
-    let gameData: GameData = {}
+export function generateGame(seed?: string) {
+    console.log(seed);
+    let generator;
+    if (seed) {
+        generator = new Phaser.Math.RandomDataGenerator(seed.split(''));
+    } else {
+        generator = new Phaser.Math.RandomDataGenerator();
+    }
+
+    // generator.init(seed);
+
+    let gameData: GameData = {
+        seed: seed,
+        generator: generator
+    }
 
     gameData.artStyle = generator.pick([
-        // 'pixel_chunky',
-        // 'DCC',
+        'pixel_chunky',
+        'DCC',
         'doodle',
+        'furry'
+    ]);
+
+    gameData.description = "Get to the end!\nUse A and D to move.\nPress SPACE to jump\nSTOMP on enemies!";
+
+    gameData.levelCount = generator.weightedPick([
+        2, 3, 4, 5
     ]);
 
     gameData.playerVariant = generator.pick([
@@ -112,11 +123,10 @@ export function generateGame(generator: Phaser.Math.RandomDataGenerator) {
 
     gameData.playerWeapon = generator.pick([
         // Weapon.NONE,
-        // Weapon.STOMP,
+        Weapon.STOMP,
         Weapon.GUN_FORWARD,
-        // Weapon.GUN_DOWN,
-        // Weapon.GUN_POINTER,
-        // Weapon.WHACK,
+        Weapon.GUN_POINTER,
+        Weapon.WHACK,
         // Weapon.ORBIT
     ]);
 
@@ -127,28 +137,32 @@ export function generateGame(generator: Phaser.Math.RandomDataGenerator) {
 
     gameData.enemyLocations = [];
 
-    gameData.jumpType = generator.weightedPick([
-        JumpType.HOVER,
+    gameData.jumpType = generator.pick([
         JumpType.JUMP,
         JumpType.FLIP,
         JumpType.FLAP,
-        // JumpType.POGO
+        JumpType.GUN
     ]);
 
     gameData.enemyMovement = generator.weightedPick([
-        EnemyMovement.STATIONARY,
         EnemyMovement.WALKING,
         EnemyMovement.FLOATING,
+        // EnemyMovement.STATIONARY,
         EnemyMovement.RICOCHET
     ]);
 
-    
+    gameData.tileData = generateLevel(gameData, generator);
 
-    
+    return gameData;
+}
 
+
+export function generateLevel(gameData: GameData, generator: Phaser.Math.RandomDataGenerator) {
+    
     let levelWidth = generator.integerInRange(20, 60);
     let levelHeight = 15;
     let tileData = [];
+    let enemyLocations = [];
 
     // populate with generic tiles
     for (let r = 0; r < levelHeight; r++) {
@@ -198,16 +212,36 @@ export function generateGame(generator: Phaser.Math.RandomDataGenerator) {
 
     // add enemies
     for (let r = 1; r < levelHeight; r++) {
-        for (let c = 0; c < levelWidth; c++) {
-            if (tileData[r][c] === 1 && generator.integerInRange(1, 10) === 1) {
-                gameData.enemyLocations.push({x: c, y: r})
+        for (let c = 10; c < levelWidth-1; c++) {
+            if (tileData[r][c] === 1 && tileData[r][c-1] === 1 && generator.integerInRange(1, 10) === 1) {
+                enemyLocations.push({x: c, y: r})
+                c++;
+            }
+        }
+    }
+    gameData.enemyLocations = enemyLocations;
+
+    // add player
+    loop:
+    for (let c = 3; c < levelWidth-1; c++) {
+        for (let r = 1; r < levelHeight; r++) {
+            if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
+                gameData.playerLocation = {x: c, y: r};
+                break loop;
             }
         }
     }
 
-    
+    // add door
+    loop:
+    for (let c = levelWidth-3; c > 0; c--) {
+        for (let r = 1; r < levelHeight; r++) {
+            if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
+                gameData.doorLocation = {x: c, y: r};
+                break loop;
+            }
+        }
+    }
 
-    gameData.tileData = tileData;
-
-    return gameData;
+    return tileData;
 }

@@ -2,8 +2,25 @@
 const artStyles = [
     'pixel_chunky',
     'DCC',
-    'doodle'
+    'doodle',
+    'furry'
 ];
+
+export class PreloadScene extends Phaser.Scene {
+    constructor() {
+        super({
+            key: 'preload'
+        });
+    }
+
+    preload() {
+        this.load.image('loading', 'img/menu-loading.png');
+    }
+
+    create() {
+        this.scene.start('load');
+    }
+}
 
 
 export class LoadScene extends Phaser.Scene {
@@ -14,10 +31,24 @@ export class LoadScene extends Phaser.Scene {
         });
     }
 
-    
-
     preload() {
+
+        
+        this.add.image(480, 360, 'loading');
+
+        
+        this.load.bitmapFont('library', 'font/library.png', 'font/library.fnt');
+        this.load.bitmapFont('title', 'font/title.png', 'font/title.fnt');
+
+        this.load.image('menu-bg', 'img/menu-bg.png');
+        this.load.image('menu-descbox', 'img/menu-descbox.png');
+        this.load.image('menu-play', 'img/menu-play.png');
+        this.load.image('menu-searchbar', 'img/menu-searchbar.png');
+        this.load.image('menu-searchbar2', 'img/menu-searchbar2.png');
+
+
         for (let style of artStyles) {
+            
             this.load.image(style+'-player1-idle', 'img/'+style+'/player1/idle.png');
             this.load.image(style+'-player1-jump', 'img/'+style+'/player1/jump.png');
             this.load.image(style+'-player1-die', 'img/'+style+'/player1/die.png');
@@ -52,6 +83,7 @@ export class LoadScene extends Phaser.Scene {
         this.load.image('pixel_chunky-enemy1', 'img/enemy.png');
         this.load.image('tiles', 'img/tiles.png');
         this.load.image('player', 'img/player.png');
+        this.load.image('gameover', 'img/game_over.png');
     }
 
     create() {
@@ -99,12 +131,12 @@ export class LoadScene extends Phaser.Scene {
         this.anims.create({
             key: 'doodle-player1-run',
             frames: this.anims.generateFrameNumbers('doodle-player1-run', {frames: [0, 1]}),
-            frameRate: 12
+            frameRate: 6
         });
         this.anims.create({
             key: 'doodle-player2-run',
             frames: this.anims.generateFrameNumbers('doodle-player2-run', {frames: [0, 1]}),
-            frameRate: 12
+            frameRate: 6
         });
         this.anims.create({
             key: 'doodle-flap',
@@ -112,7 +144,24 @@ export class LoadScene extends Phaser.Scene {
             frameRate: 5
         });
 
-        this.scene.start('main');
+
+        this.anims.create({
+            key: 'furry-player1-run',
+            frames: this.anims.generateFrameNumbers('furry-player1-run', {frames: [0]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'furry-player2-run',
+            frames: this.anims.generateFrameNumbers('furry-player2-run', {frames: [0]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'furry-flap',
+            frames: this.anims.generateFrameNumbers('furry-hover device', {frames: [1, 0]}),
+            frameRate: 5
+        });
+
+        this.scene.start('menu');
     }
 
 }
