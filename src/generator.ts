@@ -1,6 +1,7 @@
 
 
 
+
 export const JumpType = {
     JUMP: 0,
     FLAP: 1,
@@ -102,10 +103,13 @@ export function generateGame(seed?: string) {
         'pixel_chunky',
         'DCC',
         'doodle',
-        'furry'
+        'furry',
+        'pixelart',
+        'anime',
+        // 'photos'
     ]);
 
-    gameData.description = "Get to the end!\nUse A and D to move.\nPress SPACE to jump\nSTOMP on enemies!";
+    gameData.description = "";
 
     gameData.levelCount = generator.weightedPick([
         2, 3, 4, 5
@@ -116,20 +120,6 @@ export function generateGame(seed?: string) {
         'player2'
     ]);
 
-    gameData.playerLocation = {
-        x: 300,
-        y: 300
-    };
-
-    gameData.playerWeapon = generator.pick([
-        // Weapon.NONE,
-        Weapon.STOMP,
-        Weapon.GUN_FORWARD,
-        Weapon.GUN_POINTER,
-        Weapon.WHACK,
-        // Weapon.ORBIT
-    ]);
-
     gameData.enemyVariant = generator.pick([
         'enemy1',
         'enemy2'
@@ -138,11 +128,52 @@ export function generateGame(seed?: string) {
     gameData.enemyLocations = [];
 
     gameData.jumpType = generator.pick([
-        JumpType.JUMP,
+        // JumpType.JUMP,
+        // JumpType.JUMP,
+        // JumpType.JUMP,
+        // JumpType.FLAP,
+        // JumpType.FLAP,
         JumpType.FLIP,
-        JumpType.FLAP,
-        JumpType.GUN
+        JumpType.FLIP,
+        // JumpType.GUN
     ]);
+
+    gameData.description += {
+        [JumpType.JUMP]: '\nPress space to jump.',
+        [JumpType.FLIP]: '\nPress space to flip gravity.',
+        [JumpType.FLAP]: '\nKeep pressing space to fly.',
+        [JumpType.GUN]: '\nHold space to shoot downwards.',
+    }[gameData.jumpType];
+
+
+    if (gameData.jumpType === JumpType.GUN) {
+        gameData.playerWeapon = Weapon.NONE;
+    } else {
+        gameData.playerWeapon = generator.pick([
+            Weapon.STOMP,
+            Weapon.STOMP,
+            Weapon.WHACK,
+            Weapon.GUN_FORWARD,
+            Weapon.GUN_POINTER,
+        ]);
+        gameData.description += {
+            [Weapon.STOMP]: '\nJump on enemies to defeat them.',
+            [Weapon.WHACK]: '\nClick to swing your weapon.',
+            [Weapon.GUN_FORWARD]: '\nClick to shoot.',
+            [Weapon.GUN_POINTER]: '\nAim with your mouse and click to shoot.',
+        }[gameData.playerWeapon];
+    }
+
+    gameData.enemyWeapon = generator.pick([
+        EnemyAttack.NONE,
+        EnemyAttack.NONE,
+        EnemyAttack.NONE,
+        EnemyAttack.SAW,
+        EnemyAttack.SAW,
+        EnemyAttack.SHOOT,
+        EnemyAttack.SHOOT_PLAYER,
+    ])
+    
 
     gameData.enemyMovement = generator.weightedPick([
         EnemyMovement.WALKING,

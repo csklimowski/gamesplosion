@@ -6,8 +6,6 @@ import { JumpType, Weapon, EnemyMovement, GameData, generateGame } from '../gene
 export let gameData: GameData;
 export let playedGames: Set<string> = new Set();
 
-let progress = 0;
-
 export class MenuScene extends Phaser.Scene {
 
     constructor() {
@@ -66,7 +64,7 @@ export class MenuScene extends Phaser.Scene {
                     inputStr = inputStr.substr(0, inputStr.length-1);
                 }
                     
-                if (/^[\w ]$/.test(event.key)) {
+                if (event.key.length === 1) {
                     inputStr += event.key;
                 }
                 searchText.setText(inputStr + '|');

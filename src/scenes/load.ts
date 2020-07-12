@@ -3,7 +3,10 @@ const artStyles = [
     'pixel_chunky',
     'DCC',
     'doodle',
-    'furry'
+    'furry',
+    'pixelart',
+    'anime',
+    'photos'
 ];
 
 export class PreloadScene extends Phaser.Scene {
@@ -148,16 +151,67 @@ export class LoadScene extends Phaser.Scene {
         this.anims.create({
             key: 'furry-player1-run',
             frames: this.anims.generateFrameNumbers('furry-player1-run', {frames: [0]}),
-            frameRate: 6
+            frameRate: 12
         });
         this.anims.create({
             key: 'furry-player2-run',
             frames: this.anims.generateFrameNumbers('furry-player2-run', {frames: [0]}),
-            frameRate: 6
+            frameRate: 12
         });
         this.anims.create({
             key: 'furry-flap',
             frames: this.anims.generateFrameNumbers('furry-hover device', {frames: [1, 0]}),
+            frameRate: 5
+        });
+
+
+        this.anims.create({
+            key: 'anime-player1-run',
+            frames: this.anims.generateFrameNumbers('anime-player1-run', {frames: [0]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'anime-player2-run',
+            frames: this.anims.generateFrameNumbers('anime-player2-run', {frames: [0]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'anime-flap',
+            frames: this.anims.generateFrameNumbers('anime-hover device', {frames: [0]}),
+            frameRate: 5
+        });
+
+
+        this.anims.create({
+            key: 'photos-player1-run',
+            frames: this.anims.generateFrameNumbers('photos-player1-run', {frames: [0, 1, 2, 3]}),
+            frameRate: 12
+        });
+        this.anims.create({
+            key: 'photos-player2-run',
+            frames: this.anims.generateFrameNumbers('photos-player2-run', {frames: [0, 1, 2, 3]}),
+            frameRate: 12
+        });
+        this.anims.create({
+            key: 'photos-flap',
+            frames: this.anims.generateFrameNumbers('photos-hover device', {frames: [0, 1]}),
+            frameRate: 5
+        });
+
+
+        this.anims.create({
+            key: 'pixelart-player1-run',
+            frames: this.anims.generateFrameNumbers('pixelart-player1-run', {frames: [0, 1, 2]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'pixelart-player2-run',
+            frames: this.anims.generateFrameNumbers('pixelart-player2-run', {frames: [0, 1, 2, 3]}),
+            frameRate: 6
+        });
+        this.anims.create({
+            key: 'pixelart-flap',
+            frames: this.anims.generateFrameNumbers('pixelart-hover device', {frames: [1, 0]}),
             frameRate: 5
         });
 

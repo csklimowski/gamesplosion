@@ -3,8 +3,10 @@
 import { JumpType, Weapon, EnemyMovement, GameData, generateGame, generateLevel } from '../generator';
 
 import { gameData } from './menu';
+import { credits } from './credits';
 
 let progress = 0;
+let inputBound = false;
 
 export class MainScene extends Phaser.Scene {
 
@@ -12,10 +14,12 @@ export class MainScene extends Phaser.Scene {
         super({
             key: 'main'
         });
+
+        
     }
     
     player: Player;
-    keys: any;
+    keys: any = {};
 
     enemies: Phaser.GameObjects.Group;
     playerBullets: BulletGroup;
@@ -24,15 +28,17 @@ export class MainScene extends Phaser.Scene {
     gameOver: Phaser.GameObjects.Image;
     levelWon: boolean;
     curtain: Phaser.GameObjects.Rectangle;
+    creditsText: Phaser.GameObjects.Container;
     
     map: Phaser.Tilemaps.Tilemap;
     platformLayer: Phaser.Tilemaps.StaticTilemapLayer;
 
     background: Phaser.GameObjects.Image;
 
+    
+
     create() {
         this.background = this.add.image(480, 360, gameData.artStyle+'-background');
-        // this.background.setTint(0xaaaaaa);
 
         this.levelWon = false;
 
@@ -59,7 +65,7 @@ export class MainScene extends Phaser.Scene {
         door.setScale(1.5);
 
         // add player
-        this.player = new Player(this, this.platformLayer.tileToWorldX(gameData.playerLocation.x), this.platformLayer.tileToWorldY(gameData.playerLocation.y), gameData);
+        this.player = new Player(this, this.platformLayer.tileToWorldX(gameData.playerLocation.x), this.platformLayer.tileToWorldY(gameData.playerLocation.y)-12, gameData);
         
 
         this.enemies = this.add.group();
@@ -114,39 +120,60 @@ export class MainScene extends Phaser.Scene {
         this.curtain.alpha = 0;
 
 
-        this.keys = {};
-        this.keys.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        this.keys.space.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
-        this.keys.space.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
-        
-        this.keys.w = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-        this.keys.w.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
-        this.keys.w.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
+        this.creditsText = this.add.container(480, 1000);
+        let creditsFiller = this.add.bitmapText(0, 360, 'library', credits, 32);
+        creditsFiller.setCenterAlign();
+        creditsFiller.setOrigin(0.5, 0);
+        this.creditsText.add(creditsFiller);
+        let creditsTitle = this.add.bitmapText(0, 100, 'title', gameData.seed, 64);
+        creditsTitle.setCenterAlign();
+        creditsTitle.setOrigin(0.5, 0);
+        this.creditsText.add(creditsTitle);
 
-        this.keys.s = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         
-        this.keys.a = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-        this.keys.d = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+
+        if (!inputBound) {
+            this.keys.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+            this.keys.space.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
+            this.keys.space.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
+            
+            this.keys.w = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+            this.keys.w.on(Phaser.Input.Keyboard.Events.DOWN, this.onSpaceDown, this);
+            this.keys.w.on(Phaser.Input.Keyboard.Events.UP, this.onSpaceUp, this);
+    
+            this.keys.s = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+            
+            this.keys.a = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+            this.keys.d = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+            
+            inputBound = true;
+        }        
         this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onClick, this);
     }
 
     winLevel() {
-        this.levelWon = true;
+        if (!this.levelWon) {
+            progress++;
+            this.levelWon = true;
+        }
     }
 
     loseLevel() {
-        if (this.gameOver.alpha === 0) {
-            this.gameOver.setX(480);
-            this.gameOver.setY(360);
-            this.gameOver.setAlpha(1);
+        if (!this.levelWon) {
+            if (this.gameOver.alpha === 0) {
+                this.gameOver.setX(480);
+                this.gameOver.setY(360);
+                this.gameOver.setAlpha(1);
+            }
+    
+            this.time.addEvent({
+                callback: function() {
+                    this.scene.start('menu')
+                },
+                callbackScope: this,
+                delay: 1000
+            });
         }
-
-
-        this.time.addEvent({
-            callback: this.scene.restart,
-            callbackScope: this.scene,
-            delay: 1000
-        });
 
     }
 
@@ -253,6 +280,7 @@ export class MainScene extends Phaser.Scene {
             }
 
             if (gameData.jumpType === JumpType.FLIP) {
+                console.log('yeah');
                 if (this.player.body.velocity.y === 0) {
                     this.player.setGravityY(-this.player.body.gravity.y)
                     this.player.setFlipY(!this.player.flipY);
@@ -345,23 +373,38 @@ export class MainScene extends Phaser.Scene {
         }
         
         this.cameras.main.centerOn(this.player.x, this.player.y);
+
+        let cameraX = Phaser.Math.Clamp(this.player.x, 480, this.platformLayer.width-480);
+        let cameraY = this.cameras.main.worldView.centerY;
         
-        this.background.setX(Phaser.Math.Clamp(this.player.x, 480, this.platformLayer.width-480));
-        this.background.setY(this.cameras.main.worldView.centerY);
+        this.background.setX(cameraX);
+        this.background.setY(cameraY);
 
-        this.curtain.setX(Phaser.Math.Clamp(this.player.x, 480, this.platformLayer.width-480));
-        this.curtain.setY(this.cameras.main.worldView.centerY);
+        this.curtain.setX(cameraX);
+        this.curtain.setY(cameraY);
 
-        this.gameOver.setX(Phaser.Math.Clamp(this.player.x, 480, this.platformLayer.width-480));
-        this.gameOver.setY(this.cameras.main.worldView.centerY);
+        this.gameOver.setX(cameraX);
+        this.gameOver.setY(cameraY);
+
+        
+        this.creditsText.setX(cameraX);
 
 
         if (this.levelWon) {
-            this.curtain.setAlpha(Math.min(1, this.curtain.alpha + delta/1000));
-            if (this.curtain.alpha === 1) {
-                progress += 1;
-                this.scene.restart();
+            if (progress < gameData.levelCount) {
+                if (this.curtain.alpha === 1) {   
+                    this.scene.restart();
+                }
+            } else {
+                this.creditsText.y -= delta;
+                if (this.creditsText.y < -3500) {
+                    this.scene.start('menu');
+                }
             }
+            this.curtain.setAlpha(Math.min(1, this.curtain.alpha + delta/1000));
+            
+        } else {
+            this.creditsText.setY(cameraY+500);
         }
     }
 }
@@ -369,12 +412,12 @@ export class MainScene extends Phaser.Scene {
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
 
-    alive: boolean = true;
+    alive: boolean;
     gun?: Phaser.GameObjects.Image;
     hoverGun?: Phaser.GameObjects.Image;
     melee?: Phaser.Physics.Arcade.Image;
     hoverDevice?: Phaser.GameObjects.Sprite;
-    attacking: boolean = false;
+    attacking: boolean;
     
 
     constructor(scene: Phaser.Scene, x, y, gameData: GameData) {
@@ -384,6 +427,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.setCollideWorldBounds(false);
         this.setGravity(0, 1499);
         this.setOrigin(0.5, 1);
+
+        this.alive = true;
+        this.attacking = false;
 
         if (gameData.jumpType === JumpType.FLAP) {
             this.hoverDevice = scene.add.sprite(this.x, this.y, gameData.artStyle+'-hover device');
@@ -480,8 +526,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
 export class Enemy extends Phaser.Physics.Arcade.Image {
 
-    rising: boolean = false;
-    lefting: boolean = false;
+    rising: boolean;
+    lefting: boolean;
     hoverDevice: Phaser.GameObjects.Image;
     gun: Phaser.GameObjects.Image;
 
@@ -491,6 +537,9 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
         this.setOrigin(0.5, 1);
         this.body.immovable = true;
         this.setGravity(0, 1499);
+
+        this.rising = false;
+        this.lefting = false;
         
         if (gameData.enemyMovement === EnemyMovement.WALKING) {
             this.setVelocityX(-100);
