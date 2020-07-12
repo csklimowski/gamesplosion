@@ -5,6 +5,9 @@ import { JumpType, Weapon, EnemyMovement, GameData, generateGame } from '../gene
 // @ts-ignore
 export let gameData: GameData;
 export let playedGames: Set<string> = new Set();
+export let metaData = {
+    winStreak: 0
+};
 
 export class MenuScene extends Phaser.Scene {
 
@@ -48,6 +51,12 @@ export class MenuScene extends Phaser.Scene {
         }, this);
         this.searchPage.add(searchBar);
 
+        if (metaData.winStreak > 0) {
+            let winText = this.add.bitmapText(0, 100, 'library', 'Win streak: ' + metaData.winStreak, 32,);
+            winText.setOrigin(0.5, 0.5);
+            this.searchPage.add(winText);
+        }
+
         let inputStr = '';
         let searchText = this.add.bitmapText(-250, -80, 'library', '', 32);
         this.searchPage.add(searchText);
@@ -65,7 +74,12 @@ export class MenuScene extends Phaser.Scene {
                 }
                     
                 if (event.key.length === 1) {
-                    inputStr += event.key;
+                    inputStr += event.key;    
+                }
+                if (playedGames.has(inputStr)) {
+                    searchText.setAlpha(0.3);
+                } else {
+                    searchText.setAlpha(1);
                 }
                 searchText.setText(inputStr + '|');
             }
@@ -73,6 +87,8 @@ export class MenuScene extends Phaser.Scene {
     }
 
     search(text) {
+        if (playedGames.has(text)) return;
+
         this.searchEntered = true;
         gameData = generateGame(text);
         let bg = this.add.image(0, 0, gameData.artStyle+'-background');
@@ -82,8 +98,12 @@ export class MenuScene extends Phaser.Scene {
         let bmText = this.add.bitmapText(0, -200, 'title', text, 64, 0.5);
         bmText.setOrigin(0.5, 0.5);
         this.playPage.add(bmText);
-        this.playPage.add(this.add.image(-200, 0, gameData.artStyle+'-'+gameData.playerVariant+'-idle'));
-        this.playPage.add(this.add.image(200, 0, gameData.artStyle+'-'+gameData.enemyVariant));
+        let player = this.add.image(-200, 0, gameData.artStyle+'-'+gameData.playerVariant+'-idle');
+        player.setScale(1.5);
+        this.playPage.add(player);
+        let enemy = this.add.image(200, 0, gameData.artStyle+'-'+gameData.enemyVariant);
+        enemy.setScale(1.5);
+        this.playPage.add(enemy);
         this.playPage.add(this.add.image(0, 160, 'menu-descbox'));
 
         let playButton = this.add.image(-230, 120, 'menu-play');
@@ -100,7 +120,7 @@ export class MenuScene extends Phaser.Scene {
         }, this);
         this.playPage.add(playButton);
 
-        let description = this.add.bitmapText(-110, 90, 'library', gameData.description, 32);
+        let description = this.add.bitmapText(-110, 90, 'library', gameData.description, 28);
         description.setAlpha(0.8);
         this.playPage.add(description);
     }

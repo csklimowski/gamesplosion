@@ -1,7 +1,3 @@
-
-
-
-
 export const JumpType = {
     JUMP: 0,
     FLAP: 1,
@@ -19,11 +15,9 @@ export const Weapon = {
 }
 
 export const LevelGoal = {
-    FINISH_LINE: 0,
+    REACH_DOOR: 0,
     COLLECT: 1,
-    DOOR_KEY: 2,
-    SURVIVE: 3,
-    KILL: 4
+    KILL: 2,
 }
 
 export const LevelShape = {
@@ -63,23 +57,29 @@ export interface GameData {
 
     artStyle?: string;
     levelCount?: number;
+    levelSize?: number;
     
     playerVariant?: string;
     playerLocation?: Vector2;
     jumpType?: number;
     playerWeapon?: number;
-    playerGunProjectile?: number;
 
     enemyVariant?: string;
-    enemyGunProjectile?: number;
     enemyLocations?: Vector2[];
     enemyMovement?: number;
-    enemyWeapon?: number;
+    enemyAttack?: number;
     
     tileData?: number[][];
 
     doorLocation?: Vector2;
+    collectibleLocations?: Vector2[];
+    music?: string;
+    background?: string;
+
     description?: string;
+
+    levelGoal?: number;
+
 }
 
 
@@ -106,14 +106,58 @@ export function generateGame(seed?: string) {
         'furry',
         'pixelart',
         'anime',
-        // 'photos'
+        'vector',
+        'pixel_chunky',
+        'DCC',
+        'doodle',
+        'furry',
+        'pixelart',
+        'anime',
+        'vector',
+        'pixel_chunky',
+        'DCC',
+        'doodle',
+        'furry',
+        'pixelart',
+        'anime',
+        'vector',
+        'photos',
+    ]);
+
+    gameData.background = generator.pick([
+        'background',
+        'background2'
+    ]);
+
+    gameData.music = generator.pick([
+        'music1',
+        'music2',
+        'music3'
     ]);
 
     gameData.description = "";
 
+    gameData.levelGoal = generator.pick([
+        LevelGoal.REACH_DOOR,
+        LevelGoal.REACH_DOOR,
+        LevelGoal.REACH_DOOR,
+        LevelGoal.COLLECT,
+        LevelGoal.COLLECT,
+        LevelGoal.KILL
+    ]);
+    gameData.description += {
+        [LevelGoal.REACH_DOOR]: 'Get to the exit!',
+        [LevelGoal.COLLECT]: 'Collect all of the items!',
+        [LevelGoal.KILL]: 'Defeat all of the enemies!',
+    }[gameData.levelGoal];
+
+    gameData.description += '\nPress A and D to move.'
+
     gameData.levelCount = generator.weightedPick([
         2, 3, 4, 5
     ]);
+
+    gameData.levelSize = generator.integerInRange(20, 70);
 
     gameData.playerVariant = generator.pick([
         'player1',
@@ -128,21 +172,22 @@ export function generateGame(seed?: string) {
     gameData.enemyLocations = [];
 
     gameData.jumpType = generator.pick([
-        // JumpType.JUMP,
-        // JumpType.JUMP,
-        // JumpType.JUMP,
-        // JumpType.FLAP,
-        // JumpType.FLAP,
+        JumpType.JUMP,
+        JumpType.JUMP,
+        JumpType.JUMP,
+        JumpType.JUMP,
+        JumpType.FLAP,
+        JumpType.FLAP,
         JumpType.FLIP,
         JumpType.FLIP,
-        // JumpType.GUN
+        JumpType.GUN
     ]);
 
     gameData.description += {
-        [JumpType.JUMP]: '\nPress space to jump.',
-        [JumpType.FLIP]: '\nPress space to flip gravity.',
-        [JumpType.FLAP]: '\nKeep pressing space to fly.',
-        [JumpType.GUN]: '\nHold space to shoot downwards.',
+        [JumpType.JUMP]: '\nPress Space to jump.',
+        [JumpType.FLIP]: '\nPress Space to flip gravity.',
+        [JumpType.FLAP]: '\nTap Space to fly.',
+        [JumpType.GUN]: '\nHold Space to shoot downwards.',
     }[gameData.jumpType];
 
 
@@ -164,25 +209,39 @@ export function generateGame(seed?: string) {
         }[gameData.playerWeapon];
     }
 
-    gameData.enemyWeapon = generator.pick([
+    gameData.enemyAttack = generator.pick([
         EnemyAttack.NONE,
         EnemyAttack.NONE,
         EnemyAttack.NONE,
+        EnemyAttack.SAW,
         EnemyAttack.SAW,
         EnemyAttack.SAW,
         EnemyAttack.SHOOT,
         EnemyAttack.SHOOT_PLAYER,
-    ])
-    
-
-    gameData.enemyMovement = generator.weightedPick([
-        EnemyMovement.WALKING,
-        EnemyMovement.FLOATING,
-        // EnemyMovement.STATIONARY,
-        EnemyMovement.RICOCHET
     ]);
 
-    gameData.tileData = generateLevel(gameData, generator);
+    if (gameData.enemyAttack === EnemyAttack.SHOOT_PLAYER) {
+        gameData.enemyMovement = generator.weightedPick([
+            EnemyMovement.STATIONARY,
+            EnemyMovement.WALKING,
+            EnemyMovement.WALKING,
+            EnemyMovement.FLOATING,
+            EnemyMovement.RICOCHET
+        ]);
+    } else {
+        gameData.enemyMovement = generator.weightedPick([
+            EnemyMovement.WALKING,
+            EnemyMovement.WALKING,
+            EnemyMovement.FLOATING,
+            // EnemyMovement.STATIONARY,
+            EnemyMovement.RICOCHET
+        ]);
+    }
+    
+
+    
+
+    // gameData.tileData = generateLevel(gameData, generator);
 
     return gameData;
 }
@@ -190,10 +249,11 @@ export function generateGame(seed?: string) {
 
 export function generateLevel(gameData: GameData, generator: Phaser.Math.RandomDataGenerator) {
     
-    let levelWidth = generator.integerInRange(20, 60);
+    let levelWidth = gameData.levelSize;
     let levelHeight = 15;
     let tileData = [];
     let enemyLocations = [];
+    let collectibleLocations = [];
 
     // populate with generic tiles
     for (let r = 0; r < levelHeight; r++) {
@@ -209,12 +269,19 @@ export function generateLevel(gameData: GameData, generator: Phaser.Math.RandomD
 
     // add varying floor/ceiling
     let floorHeight = generator.integerInRange(1, 3);
+    let ceilHeight = generator.integerInRange(1, 3);
     for (let c = 0; c < levelWidth; c++) {
         for (let r = levelHeight-1; r > levelHeight-floorHeight; r--) {
             tileData[r][c] = 0;
         }
+        for (let r = 0; r < ceilHeight; r++) {
+            tileData[r][c] = 0;
+        }
         if (generator.integerInRange(1, 4) === 1) {
             floorHeight = generator.integerInRange(Math.min(5, floorHeight+3), Math.max(1, floorHeight-3));
+        }
+        if (generator.integerInRange(1, 6) === 2) {
+            ceilHeight = generator.integerInRange(Math.min(4, ceilHeight+3), Math.max(1, ceilHeight-3))
         }
     }
 
@@ -241,35 +308,76 @@ export function generateLevel(gameData: GameData, generator: Phaser.Math.RandomD
     }
 
 
-    // add enemies
-    for (let r = 1; r < levelHeight; r++) {
-        for (let c = 10; c < levelWidth-1; c++) {
-            if (tileData[r][c] === 1 && tileData[r][c-1] === 1 && generator.integerInRange(1, 10) === 1) {
-                enemyLocations.push({x: c, y: r})
-                c++;
+    // add player
+    gameData.playerLocation = {x: -1000, y: -1000};
+    if (gameData.levelGoal === LevelGoal.REACH_DOOR) {
+        playerLoop:
+        for (let c = 3; c < levelWidth-1; c++) {
+            for (let r = 1; r < levelHeight; r++) {
+                if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
+                    gameData.playerLocation = {x: c, y: r};
+                    break playerLoop;
+                }
+            }
+        }
+    } else {
+        for (let c = 3; c < levelWidth-1; c++) {
+            for (let r = 1; r < levelHeight; r++) {
+                if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
+                    if (Math.abs(c - levelWidth/2) < Math.abs(gameData.playerLocation.x - levelWidth/2)) {
+                        gameData.playerLocation = {x: c, y: r};
+                    }
+                }
             }
         }
     }
+
+
+    // add enemies
+    do {
+        for (let r = 1; r < levelHeight; r++) {
+            for (let c = 0; c < levelWidth-1; c++) {
+                if (tileData[r][c] === 1 && tileData[r][c-1] === 1 && Math.abs(c-gameData.playerLocation.x) > 3 && generator.integerInRange(1, 8) === 1) {
+                    enemyLocations.push({x: c, y: r})
+                    c++;
+                }
+            }
+        }
+    } while (gameData.levelGoal === LevelGoal.KILL && enemyLocations.length === 0)
+
     gameData.enemyLocations = enemyLocations;
 
-    // add player
-    loop:
-    for (let c = 3; c < levelWidth-1; c++) {
-        for (let r = 1; r < levelHeight; r++) {
-            if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
-                gameData.playerLocation = {x: c, y: r};
-                break loop;
+
+    if (gameData.levelGoal === LevelGoal.COLLECT) {
+        while (collectibleLocations.length < 2) {
+            for (let r = 1; r < levelHeight; r++) {
+                colSearch:
+                for (let c = 10; c < levelWidth-1; c++) {
+                    for (let loc of enemyLocations) {
+                        if (loc.x === c && loc.y === r) continue colSearch;
+                    }
+                    if (tileData[r][c] === 1 && tileData[r][c-1] === 1 && Math.abs(c-gameData.playerLocation.x) > 3 && generator.integerInRange(1, 9) === 1) {
+                        collectibleLocations.push({x: c, y: r})
+                        c++;
+                    }
+                }
             }
         }
     }
 
+    gameData.collectibleLocations = collectibleLocations;
+
+    
+
     // add door
-    loop:
-    for (let c = levelWidth-3; c > 0; c--) {
-        for (let r = 1; r < levelHeight; r++) {
-            if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
-                gameData.doorLocation = {x: c, y: r};
-                break loop;
+    if (gameData.levelGoal === LevelGoal.REACH_DOOR) {
+        doorLoop:
+        for (let c = levelWidth-3; c > 0; c--) {
+            for (let r = 1; r < levelHeight; r++) {
+                if (tileData[r][c] === 1 && tileData[r][c-1] === 1) {
+                    gameData.doorLocation = {x: c, y: r};
+                    break doorLoop;
+                }
             }
         }
     }

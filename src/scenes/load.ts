@@ -6,7 +6,8 @@ const artStyles = [
     'furry',
     'pixelart',
     'anime',
-    'photos'
+    'photos',
+    'vector'
 ];
 
 export class PreloadScene extends Phaser.Scene {
@@ -48,6 +49,7 @@ export class LoadScene extends Phaser.Scene {
         this.load.image('menu-play', 'img/menu-play.png');
         this.load.image('menu-searchbar', 'img/menu-searchbar.png');
         this.load.image('menu-searchbar2', 'img/menu-searchbar2.png');
+        this.load.image('menu-no-results', 'img/menu-no-results.png');
 
 
         for (let style of artStyles) {
@@ -60,13 +62,6 @@ export class LoadScene extends Phaser.Scene {
             this.load.image(style+'-player2-jump', 'img/'+style+'/player2/jump.png');
             this.load.image(style+'-player2-die', 'img/'+style+'/player2/die.png');
             this.load.spritesheet(style+'-player2-run', 'img/'+style+'/player2/run.png', { frameWidth: 72, frameHeight: 96});
-            // this.load.image(style+'-player3-idle', 'img/'+style+'/player3/idle.png');
-            // this.load.image(style+'-player3-jump', 'img/'+style+'/player3/jump.png');
-            // this.load.image(style+'-player3-die', 'img/'+style+'/player3/die.png');
-            // this.load.spritesheet(style+'-player3-run', 'img/'+style+'/player3/run.png', { frameWidth: 72, frameHeight: 96});
-
-            // this.load.image(style+'-enemy3', 'img/'+style+'/enemy3/enemy3.png');
-            
             
             this.load.image(style+'-enemy1', 'img/'+style+'/enemy1.png');
             this.load.image(style+'-enemy2', 'img/'+style+'/enemy2.png');
@@ -81,7 +76,20 @@ export class LoadScene extends Phaser.Scene {
             this.load.image(style+'-key', 'img/'+style+'/key.png');
             this.load.image(style+'-background', 'img/'+style+'/background.png');
             this.load.image(style+'-melee', 'img/'+style+'/melee.png');
+
+            this.load.audio(style+'-music1', 'sound/music/'+style+'/1.ogg');
+            this.load.audio(style+'-music2', 'sound/music/'+style+'/2.ogg');
+            this.load.audio(style+'-music3', 'sound/music/'+style+'/3.ogg');
         }
+
+        this.load.audio('click', 'sfx/click.ogg');
+        this.load.audio('credits', 'sfx/credits.ogg');
+        this.load.audio('die', 'sfx/die.ogg');
+        this.load.audio('kill', 'sfx/kill.ogg');
+        this.load.audio('shoot', 'sfx/shoot.ogg');
+        this.load.audio('victory', 'sfx/victory.ogg');
+        this.load.audio('jump', 'sfx/jump.ogg');
+        this.load.audio('collect', 'sfx/collect.ogg');
 
         this.load.image('pixel_chunky-enemy1', 'img/enemy.png');
         this.load.image('tiles', 'img/tiles.png');
@@ -212,6 +220,23 @@ export class LoadScene extends Phaser.Scene {
         this.anims.create({
             key: 'pixelart-flap',
             frames: this.anims.generateFrameNumbers('pixelart-hover device', {frames: [1, 0]}),
+            frameRate: 5
+        });
+
+
+        this.anims.create({
+            key: 'vector-player1-run',
+            frames: this.anims.generateFrameNumbers('vector-player1-run', {frames: [0, 1, 2]}),
+            frameRate: 12
+        });
+        this.anims.create({
+            key: 'vector-player2-run',
+            frames: this.anims.generateFrameNumbers('vector-player2-run', {frames: [0, 1]}),
+            frameRate: 5
+        });
+        this.anims.create({
+            key: 'vector-flap',
+            frames: this.anims.generateFrameNumbers('vector-hover device', {frames: [1, 0]}),
             frameRate: 5
         });
 
